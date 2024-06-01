@@ -1,0 +1,167 @@
+package Opentable_Test;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.time.Duration;
+ 
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.events.EventFiringDecorator;
+import org.openqa.selenium.support.events.WebDriverListener;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+ 
+import java.util.Set;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
+ 
+import utils.EventHandler;
+ 
+import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+ 
+ 
+public class OpenTableTest {
+    public static WebDriver driver;
+    private WebDriverWait wait;
+    public final int IMPLICIT_WAIT_TIME=10;
+    public final int PAGE_LOAD_TIME=5;
+    final Logger log=Logger.getLogger(getClass());
+    JavascriptExecutor JS;
+    Select Sel;
+ 
+ @BeforeMethod
+    public WebDriver beforeMethod() throws MalformedURLException {
+        ChromeOptions chromeOptions = new ChromeOptions();
+        driver = new RemoteWebDriver(new URL("http://localhost:4444/"), chromeOptions);
+        driver.get("https://www.opentable.com");
+        driver.manage().window().maximize();
+	
+        PropertyConfigurator.configure("/home/coder/project/workspace/Project/src/main/resources/Log4j.properties");
+        wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        WebDriverListener listener = new EventHandler();
+        driver = new EventFiringDecorator<>(listener).decorate(driver);
+        return driver;
+       
+    }
+    @Test(priority = 0)
+    public void testCase1() throws IOException, InterruptedException {
+        FileInputStream fs = new FileInputStream("/home/coder/project/workspace/Project/src/TestData/data1.xlsx");
+        XSSFWorkbook work = new XSSFWorkbook(fs);
+        XSSFSheet sheet = work.getSheetAt(0);
+        XSSFRow row = sheet.getRow(1);
+        String location = row.getCell(0).getStringCellValue();
+
+
+        driver.findElement(By.xpath("//*[@id=\"home-page-autocomplete-input\"]")).sendKeys(location);
+        log.info("The data from sheet is passed successfully");
+        Thread.sleep(5000);
+        driver.findElement(By.xpath("//*[@id=\"mainContent\"]/header/div/span/div/div/div[2]/div[2]/button")).click();
+        Thread.sleep(5000);
+        log.info("The page has been redirected and displayed the list of hotels in the Bangalore");
+        driver.findElement(By.xpath("//*[@id=\"mainContent\"]/div/section/div[6]/div/label[4]/span[2]")).click();
+        Thread.sleep(5000);
+        log.info("The Asian filter has been applied and the page shows results based on that filter");
+        driver.findElement(By.xpath("/html/body/div[1]/div/div/main/div/div/div[2]/div/div[2]/div[1]/div[1]/a/h6")).click();
+        log.info("A new tab has been opened");
+        Thread.sleep(5000);
+
+		
+        TakesScreenshot screenshot = (TakesScreenshot) driver;
+        File source = screenshot.getScreenshotAs(OutputType.FILE);
+        String path = "/home/coder/project/workspace/Project/src/TestData/hotel.png";
+        FileUtils.copyFile(source,new File(path));
+        String currWindow = driver.getWindowHandle();
+        Set<String> windows = driver.getWindowHandles();
+        for(String window : windows) {
+            if(!currWindow.equals(window)) {
+                driver.switchTo().window(window);
+                break;
+            }
+        }
+        log.info("The window has been switched");
+        Thread.sleep(4000);
+        driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpPartySizePicker\"]")).click();
+        Select partySize = new Select(driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpPartySizePicker\"]")));
+        partySize.selectByIndex(3);
+        Thread.sleep(4000);
+        driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpDayPicker\"]/div/div/span")).click();
+        Thread.sleep(4000);
+        while(true) {
+            String curr = driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpDayPicker-wrapper\"]/div/div/div/div")).getText();
+            System.out.println(curr);
+            if(curr.equals("June 2024")) {
+                driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpDayPicker-wrapper\"]/div/div/div/table/tbody/tr[3]/td[6]/button")).click();
+                break;
+            }
+            driver.findElement(By.xpath("//*[@id=\"restProfileSideBarDtpDayPicker-wrapper\"]/div/div/div/div/div[2]/button[2]")).click();
+        }
+
+        Select time = new Select(driver.findElement(By.xpath("//*[@id=\"restProfileSideBartimePickerDtpPicker\"]")));
+        time.selectByVisibleText("6:30 PM");
+        Thread.sleep(4000);
+
+        log.info("Make a reservation section has been completed");
+        driver.findElement(By.xpath("//*[@id=\"baseApp\"]/div/header/div[2]/div[2]/div[1]/button")).click();
+        Thread.sleep(5000);
+        TakesScreenshot screenshot1 = (TakesScreenshot) driver;
+        File source1 = screenshot1.getScreenshotAs(OutputType.FILE);
+        String path1 = "/home/coder/project/workspace/Project/src/TestData/signin.png";
+        FileUtils.copyFile(source1,new File(path1));
+    }
+    @AfterMethod
+    public void quit()
+    {
+        driver.quit();
+    }
+}
+
+*************************************************Log4j.properties(Inside resources create Log4j.properties)main->resources->Log4j
+
+log4j.rootLogger=INFO, file
+log4j.appender.file=org.apache.log4j.FileAppender
+log4j.appender.file.File=logs/example.html
+log4j.appender.file.layout=org.apache.log4j.HTMLLayout
+
+# Define the root logger level and appender
+log4j.rootLogger=INFO, RollingAppender
+ 
+# Define the rolling appender
+log4j.appender.RollingAppender=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.RollingAppender.File=logs/app.log
+ 
+# Define the rolling appender's layout
+log4j.appender.RollingAppender.layout=org.apache.log4j.PatternLayout
+log4j.appender.RollingAppender.layout.ConversionPattern=%d [%t] %-5p %c - %m%n
+ 
+# Define the rolling appender's date pattern for rolling files daily
+log4j.appender.RollingAppender.DatePattern='.'yyyy-MM-dd
+
+************************************************************************************************************************************
+
+
+Excel:(Change the path)
+Place
+Bangalore, India
+
+In the testdata create two files
+hotel.png
+signin.png
+Copy the path and paste it inside the code
